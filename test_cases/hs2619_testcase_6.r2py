@@ -1,4 +1,5 @@
 # Test Case 6: Checks if negative max file size limit throws a valid exception.
+# Author: Harshit Sanghvi
 
 testid = 6
 testfilename = "testfile_"+ str(testid) + ".txt"

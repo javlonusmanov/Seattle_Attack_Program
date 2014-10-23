@@ -1,4 +1,7 @@
 """
+
+Author: Harshit Sanghvi
+
 This security layer interposes size restrictions on a file.  If a call is made 
 to setmaxfilesize, the file must not be allowed to grow larger than the 
 specified value.  If a user tries to write that starts before the end of file 

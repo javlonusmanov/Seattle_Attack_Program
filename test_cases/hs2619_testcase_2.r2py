@@ -1,4 +1,5 @@
 # Test Case 2: Checks if writing beyond EOF throws exception.
+# Author: Harshit Sanghvi
 
 testid = 2
 testfilename = "testfile_"+ str(testid) + ".txt"

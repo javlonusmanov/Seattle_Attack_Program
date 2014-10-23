@@ -1,4 +1,5 @@
 # Test Case 4: Checks if writing above max file size truncates new data
+# Author: Harshit Sanghvi
 
 testid = 4
 testfilename = "testfile_"+ str(testid) + ".txt"

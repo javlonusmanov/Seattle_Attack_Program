@@ -1,4 +1,5 @@
 # Test Case 3: Checks if file is truncated if required on setmaxfilesize
+# Author: Harshit Sanghvi
 
 testid = 3
 testfilename = "testfile_"+ str(testid) + ".txt"
