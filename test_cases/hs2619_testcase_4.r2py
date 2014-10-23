@@ -1,0 +1,37 @@
+# Test Case 4: Checks if writing above max file size truncates new data
+
+testid = 4
+testfilename = "testfile_"+ str(testid) + ".txt"
+
+# log("\n=======>Test Case " + str(testid) + "<=======\n");
+
+try:
+  if testfilename in listfiles():
+    removefile(testfilename)
+  myfile=openfile(testfilename,True)  #Open a file
+
+  # put some initial data of size 12 in the file.
+  myfile.writeat("abcdefghijkl",0)
+
+  #set maximum file size allowed to 15
+  myfile.setmaxfilesize(15)
+
+  myfile.writeat("uvwxyz", 11)
+  
+  data = myfile.readat(None,0)
+
+  if data == 'abcdefghijkuvwx':
+    #security layer properly truncated extra characters
+    pass
+  else:
+    log("Error: File size compromised\n")
+
+  #Close the file
+  myfile.close()
+
+except Exception as e:
+  log("===>Test Case: " + str(testid) + " Failed\n")
+  # log("Error: Unknown Exception: " + str(e) + "\n")
+else:
+  pass
+  # log("Test Case - " + str(testid) + " Passed\n")

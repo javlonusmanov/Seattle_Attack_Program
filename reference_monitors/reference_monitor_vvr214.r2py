@@ -1,0 +1,72 @@
+class SecureFile():
+  def __init__(self,file):
+    # globals
+    mycontext['debug'] = False   
+    # Maximum size of file is initially set to 20
+    mycontext['size'] = 20
+    # local (per object) reference to the underlying file
+    self.file = file
+    self.write = True
+
+  def truncate_file(self,data,size):
+    for i in range(mycontext['size'], size):
+      self.file.writeat(" ",i)
+    
+  def setmaxfilesize(self,size):
+    if(size > 0):
+      mycontext['size'] = size
+    else:
+      raise ValueError
+
+  def writeat(self,data,offset):
+    existing_file_data=self.readat(None,0)
+    current_file_length=len(existing_file_data)
+
+    if current_file_length > mycontext['size']:
+      self.truncate_file(existing_file_data,current_file_length)
+      raise SeekPastEndOfFileError()
+    elif current_file_length == mycontext['size']:
+      raise SeekPastEndOfFileError()
+    else:
+      write_data_length = len(data)
+      new_file_length = write_data_length + current_file_length
+      new_offset = current_file_length
+      if new_file_length < mycontext['size']:
+        self.file.writeat(data,new_offset)
+      else: 
+        data_to_write_length = mycontext['size'] - current_file_length
+        data_to_write = data[0:data_to_write_length]
+        self.file.writeat(data_to_write,offset)
+        raise SeekPastEndOfFileError()
+  
+  def readat(self,bytes,offset):
+    return self.file.readat(bytes,offset)
+
+  def close(self):
+    return self.file.close()
+
+def secure_openfile(filename, create):
+  f = openfile(filename,create)
+  return SecureFile(f)
+
+def secure_listfiles():
+  return listfiles()
+
+def secure_removefile(filename):
+  return removefile(filename)
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+CHILD_CONTEXT_DEF["listfiles"]["target"] = secure_listfiles
+CHILD_CONTEXT_DEF["removefile"]["target"] = secure_removefile
+
+# Execute the user code
+secure_dispatch_module()

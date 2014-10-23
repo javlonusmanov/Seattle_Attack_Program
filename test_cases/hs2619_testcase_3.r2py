@@ -1,0 +1,34 @@
+# Test Case 3: Checks if file is truncated if required on setmaxfilesize
+
+testid = 3
+testfilename = "testfile_"+ str(testid) + ".txt"
+
+# log("\n=======>Test Case " + str(testid) + "<=======\n");
+
+try:
+  if testfilename in listfiles():
+    removefile(testfilename)
+  myfile=openfile(testfilename,True)  #Open a file
+
+  # put some initial data in the file.
+  myfile.writeat("abcdefghijklmnopqrstuv",0)
+
+  #set maximum file size allowed to 10
+  myfile.setmaxfilesize(10)
+
+  data = myfile.readat(None,0)
+  if data == "abcdefghij":
+    pass
+  else:
+    log("Error: file not truncated\n")
+    raise Exception
+
+  #Close the file
+  myfile.close()
+
+except Exception as e:
+  log("===>Test Case: " + str(testid) + " Failed\n")
+  # log("Error: Unknown Exception: " + str(e) + "\n")
+else:
+  pass
+  # log("Test Case - " + str(testid) + " Passed\n")

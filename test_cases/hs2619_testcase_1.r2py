@@ -1,0 +1,34 @@
+# Test Case 1: A very basic test case. tries to write within EOF and file size limit and new data is within current file size.
+
+testid = 1
+testfilename = "testfile_"+ str(testid) + ".txt"
+
+# log("\n=======>Test Case " + str(testid) + "<=======\n");
+
+try:
+  if testfilename in listfiles():
+    removefile(testfilename)
+  myfile=openfile(testfilename,True)  #Open a file
+  
+  #write something
+  myfile.writeat("TestTest",0)
+
+  myfile.setmaxfilesize(10)
+  
+  #the following writeat offset and data is within filesize limit, so security layer should not block it
+  myfile.writeat("xy",8)
+  data = myfile.readat(None,0)
+  if data == "TestTestxy":
+    pass
+  else:
+    raise Exception
+
+  #Close the file
+  myfile.close()
+
+except Exception as e:
+  log("===>Test Case: " + str(testid) + " Failed\n")
+  # log("Error: Unknown Exception: " + str(e) + "\n")
+else:
+  pass
+  # log("Test Case - " + str(testid) + " Passed\n")

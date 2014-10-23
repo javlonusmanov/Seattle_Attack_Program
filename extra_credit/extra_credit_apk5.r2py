@@ -1,0 +1,148 @@
+"""
+This security layer interposes size restrictions on a file.  If a call is made 
+to setmaxfilesize, the file must not be allowed to grow larger than the 
+specified value.  If a user tries to write that starts before the end of file 
+and extends past the allowed size, bytes past the allowed size are discarded.  
+If a write starts at or past the allowed size, a SeekPastEndOfFileError must 
+be raised.  If a file already contains more than the maximum file size bytes 
+when the call is made, the file must be truncated so that it is of the 
+appropriate size. It should also raise ValueError if the size to be set is not 
+valid (e.g. less than 0 or non-number)
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+    python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py 
+
+In this assignment you will create a security layer which stops the user from writing
+to a file after a specified file size. You will add a function called setmaxfilesize()
+that will take a file size as parameter and enforce it for the specified file. If a
+file is longer than the specified size, any data past this point in the file will be
+truncated. (Since the Repy V2 API does not have a truncate call, you will have to 
+implement this functionality yourself.) If a writeat() call is performed at a location 
+at or past the end of the file size limit, a SeekPastEndOfFileError should be raised. 
+If the writeat() starts before the file limit, any data up to the size limit should be 
+written and all other data should be discarded.
+""" 
+
+class SecureFile():
+	def __init__(self,file):
+		# globals
+		mycontext['debug'] = False
+		
+		#EXTRA CREDIT 
+		#If the file did not have a previous size restriction then set size to start at "None", 
+		#which allows writes of any size. If the file had previous size restriction enforce it.
+
+		# Store the file's filename locally
+		self.filename = mycontext['last_opened_filename']
+	
+		# Set the file's size locally
+		try:
+			# The extra_credit dictionary contains a size for this file
+			self.size = mycontext['extra_credit'][self.filename]
+		except KeyError:
+			# Set size to None / Unlimited writes
+			self.size = None
+		
+		# local (per object) reference to the underlying file
+		self.file = file
+	
+	def setmaxfilesize(self,size):
+		# Check if max size is of the correct type; long and int are considered correct
+		if (type(size) not in [long, int]):
+			raise ValueError("size value not valid!")
+	
+		# Check if max size is less than 0 (negative size)
+		if (size < 0):
+			raise ValueError("size value not valid!")
+		
+		# Truncate if existing file content exceeds max size
+		# Truncate by closing and removing the file and reopening a new file which only contains the "correct" data
+
+		# Read current contents of file
+		original_data = self.file.readat(None,0)
+		filename = self.filename
+		# Check if the file contents exceed the max size and truncate
+		if len(original_data) > size:
+			self.file.close()
+			secure_removefile(filename)
+			self.file = secure_openfile(filename,True)
+			original_data = original_data[:size]
+			self.file.writeat(original_data,0)
+		
+
+		# EXTRA CREDIT
+		# Store the restriction for this file globally in a dictionary with filename key
+		try:
+			mycontext['extra_credit'][filename] = size
+		except KeyError:
+			mycontext['extra_credit']={}
+			mycontext['extra_credit'][filename] = size
+	
+		# Do the assignment of size restriction for the local object
+		self.size = size
+	
+	def writeat(self,data,offset):
+		# Check if offset is of the correct type; long and int are considered correct
+		# If it is an int or long then positive check is handled by RePY (see API)
+		if offset and (type(offset) not in [int, long]):
+			raise ValueError("offset value not valid!")
+	
+		# Check if user tries to write at or beyond permitted file size
+		max_size = self.size
+		if (max_size) and (offset >= max_size):
+			raise SeekPastEndOfFileError("Tried to write past the end!")
+
+		# Check if data is of the correct type; str is considered correct
+		if (type(data)!=str):
+			raise ValueError("data value not valid")
+		
+		"""
+		# Uncomment to enable only alphanumerics + '-_' ['A-Za-z0-9'+'_'+'-']
+		allowed = set('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890_-')
+		if (set(data) <= allowed) == False:
+			raise ValueError("data value not valid")
+		"""
+
+		# Truncate data if there is a file size restriction requirement
+		if (max_size!=None) and (offset + len(data) > max_size):
+			data = data[:max_size - offset]
+
+		# Write the requested data to the file using the sandbox's writeat call
+		if data:
+			self.file.writeat(data,offset)
+
+	def readat(self,bytes,offset):
+		return self.file.readat(bytes,offset)
+
+	def close(self):
+		return self.file.close()
+
+def secure_openfile(filename, create):
+	f = openfile(filename,create)
+	# Store last opened filename globally to track files
+	mycontext['last_opened_filename'] = filename
+	return SecureFile(f)
+
+def secure_listfiles():
+	return listfiles()
+
+def secure_removefile(filename):
+	return removefile(filename)
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+CHILD_CONTEXT_DEF["listfiles"]["target"] = secure_listfiles
+CHILD_CONTEXT_DEF["removefile"]["target"] = secure_removefile
+
+# Execute the user code
+secure_dispatch_module()

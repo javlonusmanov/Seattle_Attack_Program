@@ -1,0 +1,38 @@
+# Test Case 1: Opens a file, writes data, sets max file size, closes it, opens the same file again and writes data more than previously set file size limit
+
+testid = 1
+testfilename = "extra_testfile_"+ str(testid) + ".txt"
+
+# log("\n=======>Extra Test Case " + str(testid) + "<=======\n");
+
+try:
+  if testfilename in listfiles():
+    removefile(testfilename)
+  myfile=openfile(testfilename,True)  #Open a file
+
+  myfile.setmaxfilesize(4)
+  
+  #write something
+  myfile.writeat("Test",0)
+  
+  myfile.close()
+  myfile=openfile(testfilename,False)  #Open the file again
+
+  #the following writeat offset and data is within filesize limit, so security layer should not block it
+  myfile.writeat("abcdefgh",0)
+  data = myfile.readat(None,0)
+  if data == "abcd":
+    pass
+  else:
+    #ignored previously set size limit
+    raise Exception
+
+  #Close the file
+  myfile.close()
+
+except Exception as e:
+  log("===>Test Case: " + str(testid) + " Failed\n")
+  # log("Error: Unknown Exception: " + str(e) + "\n")
+else:
+  pass
+  # log("Test Case - " + str(testid) + " Passed\n")

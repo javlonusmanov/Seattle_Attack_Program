@@ -1,0 +1,171 @@
+"""
+This security layer interposes size restrictions on a file.  If a call is made 
+to setmaxfilesize, the file must not be allowed to grow larger than the 
+specified value.  If a user tries to write that starts before the end of file 
+and extends past the allowed size, bytes past the allowed size are discarded.  
+If a write starts at or past the allowed size, a SeekPastEndOfFileError must 
+be raised.  If a file already contains more than the maximum file size bytes 
+when the call is made, the file must be truncated so that it is of the 
+appropriate size. It should also raise ValueError if the size to be set is not 
+valid(e.g. less than 0 or non-number )
+
+
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+    python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py 
+    
+    """ 
+
+class SecureFile():
+	def __init__(self,file):
+	
+		# Loads size limit if stored
+		def loadsize():
+			if (mycontext['filename'] + "_sizelimit.txt") in listfiles():
+				sfile = openfile(mycontext['filename'] + "_sizelimit.txt",False)
+				sdata = sfile.readat(None,0)
+				sfile.close()
+				return int(sdata)
+			else:
+				return None
+		
+		# Create thread lock object
+		mycontext['stoplock'] = createlock()
+		
+		# Lock thread
+		mycontext['stoplock'].acquire(True)
+		
+		# globals
+		mycontext['debug'] = False  
+		# starts as "None", which allows writes of any size.
+		mycontext['size'] = loadsize()
+		# starts as 0, indicating an empty file.
+		mycontext['usage'] = 0
+		
+		# local (per object) reference to the underlying file
+		self.file = file
+				
+		# Unlock thread
+		mycontext['stoplock'].release()
+		
+	def setmaxfilesize(self,size):
+	
+		# Lock thread
+		mycontext['stoplock'].acquire(True)
+
+		# Check to see whether size is non-number
+		if not (isinstance(size, int) or isinstance(size, long)):
+			raise ValueError("Size to be set is not a number.")
+			
+		# Check to see if size is less than zero
+		if size < 0:
+			raise ValueError("Size to be set is less than zero.")
+			
+		# Sets max file size
+		mycontext['size'] = size
+				
+		# Truncate file if it contains more than maximum file size bytes
+		if mycontext['usage'] > mycontext['size']:
+		
+			# Imports file data, determines length, stores length as 'usage'
+			fdata = self.file.readat(None,0)
+			mycontext['usage'] = len(fdata)
+		
+			# Truncate previously imported file data
+			fdata = fdata[:mycontext['size']]
+			
+			# Remove current file
+			self.file.close()
+			removefile(mycontext['filename'])
+			
+			# Create new file with truncated data
+			self.file = openfile(mycontext['filename'],True)
+			self.file.writeat(fdata,0)
+			
+			# Update usage
+			mycontext['usage'] = mycontext['size']
+
+		# Unlock thread
+		mycontext['stoplock'].release()
+		
+	def writeat(self,data,offset):
+		
+		# Lock thread
+		mycontext['stoplock'].acquire(True)
+		
+		# Validate data, offset (prevents bad input from affecting state)
+		if (isinstance(data, str)) and (offset >= 0) and (isinstance(offset, int) or isinstance(offset, long)):
+			
+			# Calculate where write ends
+			dlength = len(data)
+			dend = offset + dlength
+			
+			# Check to see if maxfilesize is set
+			if mycontext['size'] != None:
+				
+				# Raise error if write starts at or past the allowed size
+				if offset >= mycontext['size']:
+					raise SeekPastEndOfFileError("Tried to write past the end!")
+
+				# Discard bytes past allowed size
+				if dend > mycontext['size']:
+					data = data[:(mycontext['size'] - offset)]
+					dend = mycontext['size']
+
+			# Update usage
+			if dend > mycontext['usage']:
+				mycontext['usage'] = dend 
+					
+		# Write the requested data to the file using the sandbox's writeat call
+		self.file.writeat(data,offset)
+
+		# Unlock thread
+		mycontext['stoplock'].release()
+		
+	def readat(self,bytes,offset):
+		return self.file.readat(bytes,offset)
+
+	def close(self):
+	
+		# Stores size limit
+		if (mycontext['filename'] + "_sizelimit.txt") in listfiles():
+			removefile(mycontext['filename']+"_sizelimit.txt")
+				
+		sfile=openfile(mycontext['filename']+"_sizelimit.txt",True)
+		sfile.writeat(str(mycontext['size']),0)
+		sfile.close()
+		
+		return self.file.close()
+
+def secure_openfile(filename, create):
+	
+	f = openfile(filename,create)
+	
+	# Store filename in global variable
+	mycontext['filename'] = filename
+	
+	return SecureFile(f)
+
+def secure_listfiles():
+	return listfiles()
+
+def secure_removefile(filename):
+	return removefile(filename)
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+CHILD_CONTEXT_DEF["listfiles"]["target"] = secure_listfiles
+CHILD_CONTEXT_DEF["removefile"]["target"] = secure_removefile
+
+# Execute the user code
+secure_dispatch_module()

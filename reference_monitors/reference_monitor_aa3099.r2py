@@ -1,0 +1,108 @@
+"""
+Author: Achintya Ashok
+NetID:  aa3099
+Date:   10/16/2014
+
+This security layer interposes size restrictions on a file.  If a call is made 
+to setmaxfilesize, the file must not be allowed to grow larger than the 
+specified value.  If a user tries to write that starts before the end of file 
+and extends past the allowed size, bytes past the allowed size are discarded.  
+If a write starts at or past the allowed size, a SeekPastEndOfFileError must 
+be raised.  If a file already contains more than the maximum file size bytes 
+when the call is made, the file must be truncated so that it is of the 
+appropriate size. It should also raise ValueError if the size to be set is not 
+valid(e.g. less than 0 or non-number )
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+
+    << CODE >>
+    python repy.py restrictions.default encasementlib.r2py reference_monitor_aa3099.r2py [your_attack_program].r2py 
+    
+""" 
+
+class SecureFile:
+  ''' Constructor'''
+  def __init__(self, fileName, create):
+    self._file = openfile(fileName, create)
+    self.fileName = fileName
+    self.fileSize = None # by default, there is no max file size
+
+  ''' This method specifies the maximimum file size for a Secure File. The file managed by the 
+  SecureFile will not exceed this length in bytes specified in the parameter. If the file size
+  limit changes after creation of the file, the file will be truncated (or not) appropriately. '''
+  def setmaxfilesize(self, size):
+    if(isinstance(size, int) == False and isinstance(size, long) == False): # the size must be an integer or long
+      raise ValueError
+    if(size < 0):
+      raise ValueError
+    if(self.fileSize != None and self.fileSize <= size):
+      # here, we are just increasing/keeping the max file size, we do not need to get rid of the file
+      self.fileSize = size
+      return
+    # reduction of the file size limit:
+    self.fileSize = size
+    truncatedData = self._file.readat(size, 0) # read only the max file size # of bytes and then add this to a new file
+    self._file.close()        # close the file pointer
+    removefile(self.fileName) # remove the file from the directory
+    self._file = openfile(self.fileName, True)
+    self._file.writeat(truncatedData, 0)  # copy the data we need into the new file
+
+
+  ''' Reads and returns back a string. The length of the string needed to be read is specified by 
+  the number of bytes that are requested to be read in the first parameter. The second parameter, 
+  offset, specifies the location offset at which to begin with (with respect to the begininning of the file)'''
+  def readat(self, bytes, offset):
+    if((isinstance(bytes, int) == False and isinstance(bytes, long) == False) or (isinstance(offset, int) == False and isinstance(offset, long) == False)): # must be an integer or long
+      raise ValueError
+    if(bytes < 0 or offset < 0 or (self.fileSize != None and offset > self.fileSize)):
+      # if there are no bytes to read (negative integer provided) or our offset is outside the SecureFile constraints
+      raise SeekPastEndOfFileError # we cannot read anything outside these constraints
+    # check to make sure that the bytes we read after offset do not go past the end of the file:
+    endPosOfRead = offset + bytes # the position we will end up at after the read operation
+    if(self.fileSize != None and endPosOfRead > self.fileSize):
+      bytes = bytes - (endPosOfRead - self.fileSize) # limit the number of read bytes to the fileSizeLimit
+    
+    return self._file.readat(bytes, offset)
+
+  ''' This method writes data at a certain location offsetted from the beginning of the file by the
+  number of bytes specified in the second parameter '''
+  def writeat(self, data, offset):
+    if(isinstance(offset, int) == False and isinstance(offset, long) == False): # must be an integer or long
+      raise ValueError
+    if(offset < 0 or (self.fileSize != None and offset > self.fileSize)):
+      raise SeekPastEndOfFileError
+    # don't want to write past the end of of our file size limit, we constrain the number of bytes that get written
+    endPosOfWrite = len(data) + offset
+    if(self.fileSize != None and endPosOfWrite > self.fileSize):
+      limitedBytesToWrite = len(data) - (endPosOfWrite - self.fileSize) # subtract the excess from the end
+      data = data[:limitedBytesToWrite] # truncate the data to the end of the file size limit
+    self._file.writeat(data, offset)    # write the data
+
+  ''' Close our file pointer. ''' 
+  def close(self):
+    self._file.close() # close the filehandle
+
+''' A restricted version of openfile. Returns a SecureFile Object'''
+def secure_openfile(filename, create):
+  if filename.isalnum() == False: # our filename is not alpha-numeric, remove special characters
+    rebuiltStr = ""
+    for c in filename:
+      if c.isalnum():
+        rebuiltStr += c
+    filename = rebuiltStr
+  filename = filename.lower() # make the filename lowercase
+  return SecureFile(filename, create)
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+
+secure_dispatch_module()

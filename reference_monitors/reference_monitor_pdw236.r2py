@@ -1,0 +1,138 @@
+"""
+Created By: Patrick Whitsell
+Date: 10-16-14
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+    python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py     
+""" 
+
+class SecureFile():
+  def __init__(self, file):
+    # globals
+    self.file = file  #local (per object) reference to the underlying file
+    mycontext['debug'] = False   
+    mycontext['max_size'] = None  #starts as "None", which allows writes of any size.
+    mycontext['fsize'] = self.getFileSize() #stores the file's current size
+    mycontext['temp_size'] = 0 #stores the file's size temporarily for comparisons
+
+  def setmaxfilesize(self,size):
+  	#type and value check size parameter
+    if size != None:
+      if (not isinstance(size, (int, long))): 
+        raise ValueError("Invalid type", type(size))
+      if size < 1:
+        raise ValueError("Size min value is 1. Use 'None' for unlimited writing.") 
+
+    mycontext['max_size'] = size #set file's max size
+    self.truncateFile()
+
+  def writeat(self,data,offset):
+  	#input type checking
+    if type(data) is not str: #data must be str
+      raise RepyArgumentError("Invalid type", type(data))
+    if (not isinstance(offset, (int, long))): #offset must be int or long
+      raise RepyArgumentError("Invalid type", type(offset))
+    if offset < 0:
+      raise ValueError("Offset min value is 0.")
+  	
+    mycontext['temp_size'] = mycontext['fsize'] #temp store the files current size
+  	
+  	#error checking when max file size is not set
+    if not mycontext['max_size']:
+      if offset > mycontext['fsize']: 
+        raise SeekPastEndOfFileError("Seek offset extends beyond the EOF!\n")
+    #error checking when max size is set
+    elif mycontext['max_size']:    
+      #raise error if users try to write beyond permitted file size
+      if offset >= mycontext['max_size']:
+        raise SeekPastEndOfFileError("Seek offset extends beyond the EOF!\n")	
+      elif (offset + len(data)) > mycontext['max_size']:
+        data = self.truncateString(data, mycontext['max_size'] - offset) #truncate data to fit in the file
+	
+    mycontext['fsize'] = len(data) + offset #calculate file's new size
+    if mycontext['temp_size'] > mycontext['fsize']:
+      mycontext['fsize'] = mycontext['temp_size'] #new data didn't add length to the file
+        
+    self.file.writeat(data, offset) #Write the requested data to the file
+
+  def readat(self,bytes,offset):
+    #type and value checking
+    if (not isinstance(bytes, (int, long))) and (bytes != None):
+      raise RepyArgumentError('Incorrect Type', type(bytes))
+    if (not isinstance(offset, (int, long))):
+      raise RepyArgumentError('Incorrect Type', type(offset))
+    if bytes < 0 and bytes != None:
+      raise ValueError('Number of bytes cannot be a negative value.') 
+    if offset < 0:
+      raise ValueError('Read offset min value is 0.')
+      
+    return self.file.readat(bytes,offset) #return read data
+
+  def getFileSize(self):
+    fileStr = self.readat(None, 0)
+    return len(fileStr)
+  
+  def truncateFile(self):
+    if mycontext['max_size'] == None: #value checking
+      return #do nothing
+    if mycontext['max_size'] >= mycontext['fsize']:
+      return #do nothing
+    
+    fileStr = self.readat(mycontext['max_size'], 0) #temp store contents of file up to max size 
+    self.close() #close unlocks the tread
+    mycontext['lock_obj'].acquire(True) #re-lock thread
+    
+    secure_removefile(mycontext['fname']) #delete file to remove bytes 
+    self.file = openfile(mycontext['fname'], True) #recreate file and assign as this classe's file
+    self.writeat(fileStr, 0) #write back truncated contents 
+   
+    mycontext['fsize'] = mycontext['max_size'] #file size has been truncated to the max size
+      
+  def truncateString(self, data, atpoint):   
+    #type and value checking
+    if (type(data) is not str):
+      return #just do nothing
+    if (not isinstance(atpoint, (int, long))):
+      return #just do nothing
+    if atpoint < 0 or atpoint > len(data): 
+      return #just do nothing
+    
+    return data[:atpoint] #return truncated string
+
+  def close(self):
+    mycontext['lock_obj'].release() #release thread when file is closed
+    return self.file.close()
+  
+def secure_openfile(filename, create):
+  mycontext['fname'] = filename #store the file's name
+  mycontext['lock_obj'] = createlock() #create a lock object to lock out other processes
+  mycontext['lock_obj'].acquire(True) #lock thread when file is opened
+
+  f = openfile(filename, create)
+  return SecureFile(f)
+
+def secure_listfiles():
+  return listfiles()
+
+def secure_removefile(filename):
+  return removefile(filename)
+
+
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+CHILD_CONTEXT_DEF["listfiles"]["target"] = secure_listfiles
+CHILD_CONTEXT_DEF["removefile"]["target"] = secure_removefile
+
+# Execute the user code
+secure_dispatch_module()

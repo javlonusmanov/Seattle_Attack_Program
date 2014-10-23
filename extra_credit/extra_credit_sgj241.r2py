@@ -1,0 +1,123 @@
+"""
+This security layer interposes size restrictions on a file.  If a call is made 
+to setmaxfilesize, the file will not be allowed to grow larger than the 
+specified value.  If a user tries to write that starts before the end of file 
+and extends past the allowed size, bytes past the allowed size are discarded.  
+If a write starts at or past the allowed size, a SeekPastEndOfFileError will 
+be raised.  If a file already contains more than the maximum file size bytes 
+when the call is made, the file will be truncated so that it is of the 
+appropriate size. It will also raise ValueError if the size to be set is not 
+valid(e.g. less than 0 or non-number )
+
+
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+    python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py 
+    
+    """ 
+
+
+file_dict = {}
+
+class SecureFile():
+  def __init__(self,file,filename,file_size):
+    # globals
+    # starts as "None", which allows writes of any size.
+    if file_size is None:
+	   mycontext['size'] = None
+    else:
+	   mycontext['size'] = file_size
+    # local (per object) reference to the underlying file
+    self.file = file
+    self.filename = filename
+
+  def setmaxfilesize(self,size):
+  #Sets the max limit and prevents from resetting the limit once set.
+      if not mycontext['size']:
+        mycontext['size'] = size
+        file_dict[self.filename] = mycontext['size']
+        
+  def writeat(self,data,offset):
+      #Exceptions for non numeric offset values
+      if not isinstance(offset,int):
+        raise ValueError("Non numeric offset value!")
+      elif offset < 0:
+	    raise ValueError("Negative Offset value!")
+  
+      if mycontext['size']:
+        read_data = self.readat(None,0)
+        current_file_size = len(read_data)
+      else:
+        # Write the requested data to the file using the sandbox's writeat call
+        self.file.writeat(data,offset)
+       
+      if mycontext['size'] and current_file_size < mycontext['size']:
+	   
+         #raise error if user try to write beyond the permitted file size
+         if mycontext['size'] and offset >= mycontext['size']:
+           raise SeekPastEndOfFileError("Tried to write past the file size!")
+		
+		 #raise error if user try to write beyond the permitted current EOF
+         elif mycontext['size'] and offset < mycontext['size'] and offset > current_file_size:
+           raise SeekPastEndOfFileError("Tried to write past the EOF")
+		 #writes upto the file size and discards the rest
+         elif mycontext['size'] and (len(data) + offset) >= mycontext['size']:
+           self.file.writeat(data[0:(mycontext['size'] - offset)],offset)
+		 
+         else:
+         # Write the requested data to the file using the sandbox's writeat call
+           self.file.writeat(data,offset)
+      elif mycontext['size'] and current_file_size == mycontext['size']:
+         if offset < mycontext['size']:
+		    self.file.writeat(data[0:(mycontext['size'] - offset)],offset)
+         else:	
+            # raise error as file size is reached		 
+            raise SeekPastEndOfFileError("Tried to write past the end")
+      elif mycontext['size'] and current_file_size > mycontext['size']:
+         self.file.close()
+		 #truncate large file to its limit
+         removefile(self.filename)
+         self.file = openfile(self.filename,True)
+         self.file.writeat(read_data[0:mycontext['size']],0) 
+         raise SeekPastEndOfFileError("Tried to write past the end-Filesize truncated to max limit")		 
+         
+  def readat(self,bytes,offset):
+    
+    return self.file.readat(bytes,offset)
+
+  def close(self):
+    return self.file.close()
+
+
+def secure_openfile(filename, create):
+  f = openfile(filename,create)
+  if file_dict.has_key(filename):
+     return SecureFile(f,filename,file_dict[filename])
+  else:
+     return SecureFile(f,filename,None)
+
+def secure_listfiles():
+  return listfiles()
+
+def secure_removefile(filename):
+  return removefile(filename)
+
+
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+CHILD_CONTEXT_DEF["listfiles"]["target"] = secure_listfiles
+CHILD_CONTEXT_DEF["removefile"]["target"] = secure_removefile
+
+# Execute the user code
+secure_dispatch_module()

@@ -1,0 +1,35 @@
+# Test Case 2: Checks if writing beyond EOF throws exception.
+
+testid = 2
+testfilename = "testfile_"+ str(testid) + ".txt"
+
+# log("\n=======>Test Case " + str(testid) + "<=======\n");
+
+try:
+  if testfilename in listfiles():
+    removefile(testfilename)
+  myfile=openfile(testfilename,True)  #Open a file
+
+  #write something. current max file size is none, but current file size is 0, so offset > 0 should fail
+  try:
+    myfile.writeat("TestCode",1)
+  except SeekPastEndOfFileError:
+    # log("Offset can't be > EOF\n")
+    pass
+  except RepyArgumentError:
+    # log("Offset can't be > EOF\n")
+    pass
+  else:
+    #user is allowed to write only if its at valid place
+    log("Error: offset can't be > EOF\n")
+    raise Exception
+
+  #Close the file
+  myfile.close()
+
+except Exception as e:
+  log("===>Test Case: " + str(testid) + " Failed\n")
+  # log("Error: Unknown Exception: " + str(e) + "\n")
+else:
+  pass
+  # log("Test Case - " + str(testid) + " Passed\n")

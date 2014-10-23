@@ -1,0 +1,127 @@
+""" 
+EXTRA CREDIT
+This RepyV2 program utilizes and expands upon the basic security layer provided
+by Prof. Justin Cappos (found here: https://seattle.poly.edu/wiki/EducationalAssignments/SetMaxFileSizePartOne#Abasicandinadequatedefense)
+"""
+
+"""
+This security layer interposes size restrictions on a file.  If a call is made 
+to setmaxfilesize, the file must not be allowed to grow larger than the 
+specified value.  If a user tries to write that starts before the end of file 
+and extends past the allowed size, bytes past the allowed size are discarded.  
+If a write starts at or past the allowed size, a SeekPastEndOfFileError must 
+be raised.  If a file already contains more than the maximum file size bytes 
+when the call is made, the file must be truncated so that it is of the 
+appropriate size. It should also raise ValueError if the size to be set is not 
+valid(e.g. less than 0 or non-number )
+
+
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+    python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py 
+    
+    """ 
+
+# This dict will have filenames and max sizes as its key-value pairs, respectively
+mycontext['max_sizes'] = {}
+
+# We include filename as an arg so we can use it for file truncation (which involves a call
+# to removefile()). Additionally, instead of using size as a 'global' var, we use it as a class 
+# attribute so that we can open multiple files without having their max sizes conflict.
+class SecureFile():
+  def __init__(self,file,filename):
+    # globals
+    mycontext['debug'] = False   
+    # starts as "None", which allows writes of any size.
+    # If we have encountered the file before, use the previous max size
+    if filename in mycontext['max_sizes']:
+      self.size = mycontext['max_sizes'][filename]
+    else: # Otherwise, use None
+      self.size = None
+    # local (per object) reference to the underlying file
+    self.file = file
+    self.filename = filename
+
+  # Sets the max size; verifies size is valid (i.e. positive integer) and truncates a file
+  # if it was already larger than the max size
+  def setmaxfilesize(self,size):
+    # Verify size is an integer and that it is positive
+    if not isinstance(size, (int,long)):
+      raise ValueError("The size arg must be an integer.")
+    elif size < 0:
+      raise ValueError("The size arg must be positive.")
+
+    self.size = size
+    mycontext['max_sizes'][self.filename]=self.size
+
+    # Check if file is excedes max size
+    try:
+      self.file.readat(0, self.size)
+    except SeekPastEndOfFileError:
+      pass
+    else:
+      # If no error, then file excedes max size and must be truncated
+      self.truncate()
+
+  # Reads the first "maxsize" bytes of the file, closes and removes the original,
+  # and then recreates it with only the data read, effectively truncating it.
+  def truncate(self):
+    data = self.file.readat(self.size, 0)
+    self.file.close()
+    removefile(self.filename)
+    self.file = openfile(self.filename,True)
+    self.file.writeat(data, 0)
+
+  # Writes the given data at some offset in the file; raises error if offset is 
+  # beyond the maz file size and ignores excess data for a write that begins within 
+  # bounds but overflows past max size. If size is never set, writes are not 
+  # restricted at all.
+  def writeat(self,data,offset):
+    #raise error if user try to write beyond permitted file size
+    if self.size: 
+      if offset >= self.size:
+        raise SeekPastEndOfFileError("Tried to write past the end!")
+      else:
+        # Here, we know the offset is within the bounds of the max file size,
+        # so we just trim whatever portion of data will fall outside the max
+        # file size (if any)
+        allowable_write_bound = self.size - offset
+        data = data[:allowable_write_bound]
+
+    # Write the requested data to the file using the sandbox's writeat call
+    self.file.writeat(data,offset)
+  
+  def readat(self,bytes,offset):
+    return self.file.readat(bytes,offset)
+
+  def close(self):
+    return self.file.close()
+
+def secure_openfile(filename, create):
+  f = openfile(filename,create)
+  return SecureFile(f,filename)
+
+def secure_listfiles():
+  return listfiles()
+
+def secure_removefile(filename):
+  return removefile(filename)
+
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+CHILD_CONTEXT_DEF["listfiles"]["target"] = secure_listfiles
+CHILD_CONTEXT_DEF["removefile"]["target"] = secure_removefile
+
+# Execute the user code
+secure_dispatch_module()

@@ -1,0 +1,65 @@
+'''
+Author: Anupam Gorthi
+ID : ag4019
+Reference Monitor
+'''
+
+class MySecureFile():
+  def __init__(self, file, currentFileSize):  
+    # Max no. of bytes for a file.
+    self.restrictedFileSize = 10
+    # keep a restriction on the file size
+    self.currentFileSize = currentFileSize
+    # local (per object) reference to the underlying file
+    self.file = file
+
+  def writeat(self,data,offset):
+
+    '''
+    Acquire a lock to protect against threading attacks
+    two write functions in multiple threads to a same file, may allow
+    the file size to be greater than the restricted file size
+    '''
+    mycontext['fileObjLock'] = createlock()
+
+    try:
+
+      mycontext['fileObjLock'].acquire(False)
+    
+      #raise error if user try to write beyond permitted file size
+      if (len(data) + self.currentFileSize) >= self.restrictedFileSize or offset >= self.restrictedFileSize:
+        raise SeekPastEndOfFileError("Tried to write past the end!")
+
+      # Write the requested data to the file using the sandbox's writeat call
+      self.file.writeat(data,offset)
+
+    finally:
+      # Release the lock no matter how the program exits...
+      mycontext['fileObjLock'].release()
+  
+  def readat(self,bytes,offset):
+    return self.file.readat(bytes,offset)
+
+  def close(self):
+    return self.file.close()
+
+
+def secure_openfile(filename, create):
+  f = openfile(filename,create)
+  # Make a read once so that u can have a counter to check the size of the file.
+  currentFileSize = len(f.readat(None, 0))
+  return MySecureFile(f, currentFileSize)
+
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":MySecureFile,
+                "name":"MySecureFile",
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":MySecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":MySecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":MySecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+
+# Execute the user code
+secure_dispatch_module()

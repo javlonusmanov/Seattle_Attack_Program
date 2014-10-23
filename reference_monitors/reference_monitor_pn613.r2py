@@ -1,0 +1,111 @@
+'''
+Modifications made to Prof Cappos's code
+
+This security layer interposes size restrictions on a file.  If a call is made 
+to setmaxfilesize, the file must not be allowed to grow larger than the 
+specified value.  If a user tries to write that starts before the end of file 
+and extends past the allowed size, bytes past the allowed size are discarded.  
+If a write starts at or past the allowed size, a SeekPastEndOfFileError must 
+be raised.  If a file already contains more than the maximum file size bytes 
+when the call is made, the file must be truncated so that it is of the 
+appropriate size. It should also raise ValueError if the size to be set is not 
+valid(e.g. less than 0 or non-number )
+
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+    python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py 
+    
+'''
+#Constants need to be defined for later use
+TYPE="type"
+ARGS="args"
+RETURN="return"
+EXCP="exceptions"
+TARGET="target"
+FUNC="func"
+OBJC="objc"
+
+class SecureFile():
+	def __init__(self,file,name):
+		# globals
+		mycontext['debug'] = False   
+		# starts as "None", which allows writes of any size.
+		mycontext['size'] = None
+		mycontext['name'] = name
+		# mycontext works as a global variable; refer it to keep the filename
+		self.file = file #point to the file
+		# local (per object) reference to the underlying file
+		# The entire file is read here because of no restrictions on the file size here; set offset to 0 to read from start
+		dataFromFile = self.file.readat(None, 0)
+		self.sizeOfFile = len(dataFromFile)
+		
+	def setmaxfilesize(self,size):
+		try:
+			int(size)
+		except ValueError:
+			raise ValueError("Wrong!You should have numerics here.")
+			
+			#for i in range(len(size)):
+		    #if size[i] < 0 or size[i] > 10:
+			#raise ValueError("Wrong!!")	
+			# The above commented part is what I initially tried to see if there are only integer values in the file but this did not work so I used the std try method found online instead.Try/Except code style above found on rosettacode.org
+			mycontext['size'] = size	
+			# Remove excessive data in the form of truncation
+			if size < self.sizeOfFile: 
+				dataFromFile = self.file.readat(size, 0) #there is a size restriction now so change from None to size
+				self.file.close()
+				removefile(mycontext['name'])
+				self.file = openfile(mycontext['name'], True)
+				self.file.writeat(dataFromFile, 0)
+				self.sizeOfFile = size
+		
+	def writeat(self,data,offset):
+		#raise error if user try to write beyond permitted file size
+		if mycontext['size'] and offset >= mycontext['size']:
+			raise SeekPastEndOfFileError("Tried to write past the end!")
+		# Write the requested data to the file using the sandbox's writeat call
+		# stop at file size limit
+		if mycontext['size'] != None:
+			empty = ''
+			for value in range(mycontext['size']-self.sizeOfFile):
+				empty += data[value]
+			self.file.writeat(empty, offset)
+			# range over the file's size and write in it. 
+			# While loop can be used too: int/None error while i <= mycontext['size']-self.filesize: 
+		 
+	def readat(self,bytes,offset):
+		return self.file.readat(bytes,offset)
+
+	def close(self):
+		return self.file.close()
+
+
+def secure_openfile(filename, create):
+	f = openfile(filename,create)
+	return SecureFile(f,filename)
+
+def secure_listfiles():
+	return listfiles()
+
+def secure_removefile(filename):
+	return removefile(filename)
+
+
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+CHILD_CONTEXT_DEF["listfiles"]["target"] = secure_listfiles
+CHILD_CONTEXT_DEF["removefile"]["target"] = secure_removefile
+
+# Execute the user code
+secure_dispatch_module()

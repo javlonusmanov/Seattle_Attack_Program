@@ -1,0 +1,172 @@
+"""
+
+Stephen Luk
+skl348 (N12305989)
+Assignment 2 Part 1
+Extra Credit
+
+** This is a modification of the sample defense posted on Seattle website **
+
+
+
+This security layer interposes size restrictions on a file.  If a call is made 
+to setmaxfilesize, the file must not be allowed to grow larger than the 
+specified value.  If a user tries to write that starts before the end of file 
+and extends past the allowed size, bytes past the allowed size are discarded.  
+If a write starts at or past the allowed size, a SeekPastEndOfFileError must 
+be raised.  If a file already contains more than the maximum file size bytes 
+when the call is made, the file must be truncated so that it is of the 
+appropriate size. It should also raise ValueError if the size to be set is not 
+valid(e.g. less than 0 or non-number )
+
+
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+    python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py 
+    
+""" 
+
+
+class SecureFile():
+  def __init__(self,file, filename, size = None):
+    # globals
+    mycontext['debug'] = False   
+    # starts as "None", which allows writes of any size.
+    mycontext['size'] = size
+    # local (per object) reference to the underlying file
+    self.file = file
+    self.filename = filename
+
+  #if the size is greater than current, set new size and append space characters the length of the increased size
+  #else if less than current, truncate the characters that exceeded the limit
+  def setmaxfilesize(self,size):
+    
+    if mycontext['size']:
+      #If size of the file has already been set then "filename_size" pair is already in filename_size.txt and 
+      #the following modifies the parameter recorded in the file
+      fdump = openfile("filename_size.txt", True)
+      filecontents = fdump.readat(None,0)
+      filenameindex = filecontents.find(self.filename)
+      nextfilenameindex = filenameindex + len(self.filename) + 1
+      while filecontents[nextfilenameindex] != " ":
+        nextfilenameindex += 1
+      contentsafterwards = filecontents[nextfilenameindex+1 :]
+      writesizeoffset = filenameindex + len(self.filename) + 1
+      lensize = len(str(size))
+      lenoriginalsize = len(str(mycontext['size']))
+      if lensize < lenoriginalsize:
+        fdump.writeat(str(size) + " " * (lenoriginalsize-lensize), writesizeoffset)
+      else:
+        fdump.writeat(str(size), writesizeoffset)
+      fdump.writeat(contentsafterwards, len(str(size)) + writesizeoffset)
+      fdump.close()
+
+      #if mycontext['size'] and size > mycontext['size']:
+      if size > mycontext['size']:
+        numspaces = size - mycontext['size']
+        writeoffset = mycontext['size']
+        #update size to specified size
+        mycontext['size'] = size
+        self.file.writeat(' ' * numspaces, writeoffset)
+        return
+    
+      #elif mycontext['size'] and size < mycontext['size']:
+      elif size < mycontext['size']:
+        #store original data up to the point of truncation (read file up to "size" bytes from the beginning)
+        originaldata = self.file.readat(size,0)
+      
+        #close the currently opened file and remove it
+        self.file.close()
+        removefile(self.filename)
+      
+        #open new file with same name and rewrite to it the original contents stored previously
+        self.file = openfile(self.filename, True)
+        self.file.writeat(originaldata, 0)
+      
+        #update new file size
+        mycontext['size'] = size	
+        return
+    
+    #elif not mycontext['size']:
+    else:
+      mycontext['size'] = size
+      filedump = openfile("filename_size.txt", True)
+      filecontents = filedump.readat(None,0)
+      filedump.writeat(self.filename + " " + str(size) + " ", len(filecontents))  
+      filedump.close()
+
+  def writeat(self,data,offset):
+	
+    #do not raise error even if user try to write beyond permitted file size
+    #writeat does nothing if this is the situation
+    if mycontext['size'] and offset >= mycontext['size']:
+      #raise SeekPastEndOfFileError("Tried to write past the end!")
+      return
+    
+    #if offset is a valid value and the length of data is longer than 
+    #allowed length of data from offset to end of the file, truncate
+    
+    elif mycontext['size'] and offset < mycontext['size'] and len(data) > mycontext['size'] - offset:
+      self.file.writeat(data[:-(len(data) - (mycontext['size'] - offset))], offset) #write to file the slice of the data string, to maintain file size requirement
+      return
+    
+    # Write the requested data to the file using the sandbox's writeat call
+    self.file.writeat(data,offset)
+  
+  def readat(self,bytes,offset):
+    return self.file.readat(bytes,offset)
+
+  def close(self):
+    return self.file.close()
+
+
+def secure_openfile(filename, create):
+  f = openfile(filename,create)
+  
+  #check if file has been previously been opened with max size set
+  #this information would be stored in a file called "filename_size.txt"
+  #if filename is found in this file then create SecureFile with context['size'] 
+  #initialized to the previously recorded value
+  try:
+    fdump = openfile("filename_size.txt", False)
+    filecontents = fdump.readat(None, 0)
+    filenameindex = filecontents.find(filename)
+    if filenameindex != -1:
+      filesize = ""
+      currindex = filenameindex + len(filename) + 1
+      while filecontents[currindex] != " ":
+        filesize += filecontents[currindex]
+        currindex += 1
+      return SecureFile(f, filename, int(filesize))
+    else:
+      return SecureFile(f, filename)
+    fdump.close()
+
+  except FileNotFoundError:
+    return SecureFile(f, filename)
+
+def secure_listfiles():
+  return listfiles()
+
+def secure_removefile(filename):
+  return removefile(filename)
+
+
+
+# The code here sets up type checking and variable hiding for you.  You should not need to change anything below here.
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setmaxfilesize":{"type":"func","args":(int,long, type(None)),"exceptions":Exception,"return":(type(None)),"target":SecureFile.setmaxfilesize},
+                "writeat":{"type":"func","args":(str,(int,long)),"exceptions":Exception,"return":(int,type(None)),"target":SecureFile.writeat},
+                "readat":{"type":"func","args":((int,long,type(None)),(int,long)),"exceptions":Exception,"return":str,"target":SecureFile.readat},
+                "close":{"type":"func","args":None,"exceptions":None,"return":(bool,type(None)),"target":SecureFile.close}
+           }
+
+CHILD_CONTEXT_DEF["openfile"]["target"] = secure_openfile
+CHILD_CONTEXT_DEF["listfiles"]["target"] = secure_listfiles
+CHILD_CONTEXT_DEF["removefile"]["target"] = secure_removefile
+
+# Execute the user code
+secure_dispatch_module()

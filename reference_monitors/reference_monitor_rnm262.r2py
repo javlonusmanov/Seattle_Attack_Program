@@ -1,0 +1,106 @@
+"""
+This security layer interposes size restrictions on a file.  If a call is made 
+to setmaxfilesize, the file must not be allowed to grow larger than the 
+specified value.  If a user tries to write that starts before the end of file 
+and extends past the allowed size, bytes past the allowed size are discarded.  
+If a write starts at or past the allowed size, a SeekPastEndOfFileError must 
+be raised.  If a file already contains more than the maximum file size bytes 
+when the call is made, the file must be truncated so that it is of the 
+appropriate size. It should also raise ValueError if the size to be set is not 
+valid(e.g. less than 0 or non-number )
+
+
+
+Note:
+    This security layer uses encasementlib.r2py, restrictions.default, repy.py and Python
+    Also you need to give it an application to run.
+    python repy.py restrictions.default encasementlib.r2py [security_layer].r2py [attack_program].r2py 
+    
+    """ 
+TYPE="type"
+ARGS="args"
+RETURN="return"
+EXCP="exceptions"
+TARGET="target"
+FUNC="func"
+OBJC="objc"
+
+class SecureFile():
+  def __init__(self,file,size):
+
+    # globals reference 
+    mycontext['debug'] = False   
+    mycontext['read'] = False
+    mycontext['write'] = False
+    mycontext['append'] = False
+    # local reference to the underlying file
+    self.file = file
+    self.size= size
+
+  def setmaxfilesize(self,size):
+    self.size=size
+
+  def setappend(self,enabled):
+    mycontext['append'] = enabled
+
+  def setread(self,enabled):
+    mycontext['read'] = enabled
+
+  def setwrite(self,enabled):
+    mycontext['write'] = enabled
+
+  def readat(self,bytes,offset):
+    try:
+      if not mycontext['read']:
+        return
+      else:
+        return self.file.readat(bytes,offset)
+    except ValueError:
+      pass
+  def writeat(self,data,offset):
+      if not mycontext['write']:
+        return
+      if not mycontext['append']:
+        return
+      self.file.writeat(data,offset)
+    
+      if ((mycontext['write'])) and ((mycontext['append'])):
+        if ( offset <= (mycontext['size'])):
+          mycontext['size'] = len(data) + size
+    
+        elif ( ( not(mycontext['write'])) and ((mycontext['append'])) ):
+          if( offset < mycontext['size'] ):
+            data = data[mycontext['size']- offset]
+            offset = mycontext['size']
+            mycontext['size'] = mycontext['size'] + len(data)
+        elif ((mycontext['write']) and (not mycontext['append'])):
+           if( len(data)+ offset > mycontext['size'] ):
+            data = data[mycontext['filesize']- offset]
+      else:
+        return
+      self.file.writeat(data,offset)
+  
+  def close(self):
+    return self.file.close()
+
+
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "readat":{TYPE:FUNC,ARGS:((int,long),(int,long)),EXCP:Exception,RETURN:(str,type(None)),TARGET:SecureFile.readat},
+                "writeat":{TYPE:FUNC,ARGS:(str,(int,long)),EXCP:Exception,RETURN:(int,type(None)),TARGET:SecureFile.writeat},
+                "setwrite":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setwrite},
+                "setread":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setread},
+                "setappend":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setappend},
+                "setmaxfilesize":{TYPE:FUNC,ARGS:[int],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setmaxfilesize},
+                "close":{TYPE:FUNC,ARGS:None,EXCP:None,RETURN:(bool,type(None)),TARGET:SecureFile.close}
+           }
+
+def secure_openfile(filename, create):
+  f = openfile(filename,create)
+  filecontents = f.readat(None,0)
+  size = len(filecontents)
+  return SecureFile(f,size)
+  
+CHILD_CONTEXT_DEF["openfile"] = {TYPE:OBJC,ARGS:(str,bool),EXCP:Exception,RETURN:sec_file_def,TARGET:secure_openfile}
+
+secure_dispatch_module()

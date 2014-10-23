@@ -1,0 +1,25 @@
+# Test Case 5: Checks if user can set the maxflesizelimit back to 'None'
+
+testid = 5
+testfilename = "testfile_"+ str(testid) + ".txt"
+
+# log("\n=======>Test Case " + str(testid) + "<=======\n");
+
+try:
+  if testfilename in listfiles():
+    removefile(testfilename)
+  myfile=openfile(testfilename,True)  #Open a file
+
+
+  myfile.setmaxfilesize(10);
+  myfile.setmaxfilesize(None);
+
+  #Close the file
+  myfile.close()
+
+except Exception as e:
+  log("===>Test Case: " + str(testid) + " Failed\n")
+  # log("Error: Unknown Exception: " + str(e) + "\n")
+else:
+  pass
+  # log("Test Case - " + str(testid) + " Passed\n")

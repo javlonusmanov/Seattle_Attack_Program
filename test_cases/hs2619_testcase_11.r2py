@@ -1,0 +1,79 @@
+# Test Case 11: Threads
+
+testid = 11
+testfilename = "testfile_"+ str(testid) + ".txt"
+
+# # log("\n=======>Test Case " + str(testid) + "<=======\n");
+
+mycontext['threadOneIsDone'] = False
+mycontext['threadTwoIsDone'] = False
+mycontext['TestingIsDone'] = False
+
+def threadOne():
+  try:
+    #write something
+    myfile.writeat("TestTest",0)
+
+    myfile.setmaxfilesize(10)
+    
+    mycontext['threadOneIsDone'] = True
+    while mycontext['threadTwoIsDone'] == False:
+      # log("Thread 1 sleeping\n")
+      sleep(1)
+
+    # log("Resuming Thread 1\n")
+
+    #the following writeat offset and data is within filesize limit, so security layer should not block it
+    myfile.writeat("xy",0)
+    data = myfile.readat(None,0)
+    if data == "xysxy":
+      pass
+    else:
+      raise Exception
+
+    #Close the file
+    myfile.close()
+    mycontext['TestingIsDone'] = True
+
+  except Exception as e:
+    log("===>Test Case: " + str(testid) + " Failed\n")
+    log("Error: Unknown Exception: " + str(e) + "\n")
+    exitall()
+
+def threadTwo():
+  try:
+    while mycontext['threadOneIsDone'] == False:
+      # log("Thread 2 sleeping\n")
+      sleep(1)
+
+    # log("Starting thread 2\n")
+    myfile.setmaxfilesize(5)
+    # log("File size set to 5\n")  
+    #the following writeat offset and data is within filesize limit, so security layer should not block it
+    myfile.writeat("xy",3)
+    data = myfile.readat(None,0)
+    if data == "Tesxy":
+      pass
+    else:
+      raise Exception
+    mycontext['threadTwoIsDone'] = True
+
+  except Exception as e:
+    log("===>Test Case: " + str(testid) + " Failed\n")
+    log("Error: Unknown Exception: " + str(e) + "\n")
+    exitall()
+
+
+if testfilename in listfiles():
+  removefile(testfilename)
+myfile=openfile(testfilename,True)  #Open a file
+
+
+createthread(threadOne)
+createthread(threadTwo)
+
+while mycontext['TestingIsDone'] == False:
+  # log("Waiting...\n")
+  sleep(10)
+
+log("===>Test Case - " + str(testid) + " Passed\n")

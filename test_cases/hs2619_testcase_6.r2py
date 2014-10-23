@@ -1,0 +1,31 @@
+# Test Case 6: Checks if negative max file size limit throws a valid exception.
+
+testid = 6
+testfilename = "testfile_"+ str(testid) + ".txt"
+
+# log("\n=======>Test Case " + str(testid) + "<=======\n");
+
+try:
+  if testfilename in listfiles():
+    removefile(testfilename)
+  myfile=openfile(testfilename,True)  #Open a file
+
+  try:
+    myfile.setmaxfilesize(-1);
+  except RepyArgumentError:
+    # log("Arguement Offset can't be -1\n")
+    pass
+  except ValueError:
+    pass
+  else:
+    raise Exception
+
+  #Close the file
+  myfile.close()
+
+except Exception as e:
+  log("===>Test Case: " + str(testid) + " Failed\n")
+  # log("Error: Unknown Exception: " + str(e) + "\n")
+else:
+  pass
+  # log("Test Case - " + str(testid) + " Passed\n")
