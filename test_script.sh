@@ -1,5 +1,5 @@
 #!/bin/bash
-
+ulimit -t 10
 cd reference_monitors;
 for referencemonitor in reference_monitor_*;
 	do
@@ -23,6 +23,5 @@ for referencemonitor in reference_monitor_*;
 				python repy.py restrictions.default encasementlib.r2py $referencemonitor $testcase; 
 			done;
 		echo "";
-		# read;
 	done;
 

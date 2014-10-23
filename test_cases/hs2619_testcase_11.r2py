@@ -38,7 +38,7 @@ def threadOne():
 
   except Exception as e:
     log("===>Test Case: " + str(testid) + " Failed\n")
-    log("Error: Unknown Exception: " + str(e) + "\n")
+    # log("Error: Unknown Exception: " + str(e) + "\n")
     exitall()
 
 def threadTwo():
@@ -61,7 +61,7 @@ def threadTwo():
 
   except Exception as e:
     log("===>Test Case: " + str(testid) + " Failed\n")
-    log("Error: Unknown Exception: " + str(e) + "\n")
+    # log("Error: Unknown Exception: " + str(e) + "\n")
     exitall()
 
 
@@ -77,4 +77,4 @@ while mycontext['TestingIsDone'] == False:
   # log("Waiting...\n")
   sleep(10)
 
-log("===>Test Case - " + str(testid) + " Passed\n")
+# log("===>Test Case - " + str(testid) + " Passed\n")

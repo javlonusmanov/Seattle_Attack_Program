@@ -1,0 +1,68 @@
+Testing: extra_credit_aa3099.r2py with hs2619_extra_testcase_1.r2py
+===>Test Case: 1 Failed
+Testing: extra_credit_aa3099.r2py with hs2619_extra_testcase_2.r2py
+===>Test Case: 2 Failed
+Testing: extra_credit_ad2930.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_ad2930.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_ap4094.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_ap4094.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_apk5.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_apk5.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_as7607.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_as7607.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_av1593.r2py with hs2619_extra_testcase_1.r2py
+===>Test Case: 1 Failed
+Testing: extra_credit_av1593.r2py with hs2619_extra_testcase_2.r2py
+===>Test Case: 2 Failed
+Testing: extra_credit_cmm771.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_cmm771.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_dgk254.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_dgk254.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_gc1448.r2py with hs2619_extra_testcase_1.r2py
+Content of file  0 ===>Test Case: 1 Failed
+Testing: extra_credit_gc1448.r2py with hs2619_extra_testcase_2.r2py
+Content of file  0 ===>Test Case: 2 Failed
+Testing: extra_credit_ham383.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_ham383.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_hs2619.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_hs2619.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_mr3420.r2py with hs2619_extra_testcase_1.r2py
+===>Test Case: 1 Failed
+Testing: extra_credit_mr3420.r2py with hs2619_extra_testcase_2.r2py
+===>Test Case: 2 Failed
+Testing: extra_credit_mrk420.r2py with hs2619_extra_testcase_1.r2py
+===>Test Case: 1 Failed
+Testing: extra_credit_mrk420.r2py with hs2619_extra_testcase_2.r2py
+===>Test Case: 2 Failed
+Testing: extra_credit_np1225.r2py with hs2619_extra_testcase_1.r2py
+---
+0.439538955688 Fatal Error: Function 'SecureFile.close' tried to raise exception of type: '<type 'exceptions.NameError'>' which is forbidden. 
+---
+Testing: extra_credit_np1225.r2py with hs2619_extra_testcase_2.r2py
+---
+0.558350801468 Fatal Error: Function 'SecureFile.close' tried to raise exception of type: '<type 'exceptions.NameError'>' which is forbidden. 
+---
+Testing: extra_credit_pm2306.r2py with hs2619_extra_testcase_1.r2py
+===>Test Case: 1 Failed
+Testing: extra_credit_pm2306.r2py with hs2619_extra_testcase_2.r2py
+===>Test Case: 2 Failed
+Testing: extra_credit_rnm262.r2py with hs2619_extra_testcase_1.r2py
+inside write ---
+0.563153028488 Fatal Error: Function 'SecureFile.close' tried to raise exception of type: '<type 'exceptions.NameError'>' which is forbidden. 
+---
+Testing: extra_credit_rnm262.r2py with hs2619_extra_testcase_2.r2py
+inside write ---
+0.485787153244 Fatal Error: Function 'SecureFile.close' tried to raise exception of type: '<type 'exceptions.NameError'>' which is forbidden. 
+---
+Testing: extra_credit_sgj241.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_sgj241.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_skl348.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_skl348.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_svd260.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_svd260.r2py with hs2619_extra_testcase_2.r2py
+Testing: extra_credit_vm1133.r2py with hs2619_extra_testcase_1.r2py
+===>Test Case: 1 Failed
+Testing: extra_credit_vm1133.r2py with hs2619_extra_testcase_2.r2py
+===>Test Case: 2 Failed
+Testing: extra_credit_wx330.r2py with hs2619_extra_testcase_1.r2py
+Testing: extra_credit_wx330.r2py with hs2619_extra_testcase_2.r2py

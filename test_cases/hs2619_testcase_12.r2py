@@ -4,7 +4,7 @@
 testid = 12
 testfilename1 = "testfile_"+ str(testid) + "_1.txt"
 testfilename2 = "testfile_"+ str(testid) + "_2.txt"
-# #  log("\n=======>Test Case " + str(testid) + "<=======\n");
+# # log("\n=======>Test Case " + str(testid) + "<=======\n");
 
 mycontext['threadOneIsDone'] = False
 mycontext['threadTwoIsDone'] = False
@@ -16,38 +16,40 @@ def threadOne():
       removefile(testfilename1)
     myfile1=openfile(testfilename1,True)  #Open a file
     #write something
-    myfile1.writeat("TestTest",0)
-    myfile1.setmaxfilesize(6)
+    myfile1.writeat("Test",0)
+
+    myfile1.setmaxfilesize(8)
     
-    data = myfile1.readat(None,0)
-    if data == "TestTe":
-      pass
-    else:
-      raise Exception
+    # data = myfile1.readat(None,0)
+    # if data == "TestTe":
+    #   pass
+    # else:
+    #   raise Exception
     
     mycontext['threadOneIsDone'] = True
 
     while mycontext['threadTwoIsDone'] == False:
-      #  log("Thread 1 sleeping\n")
+      # log("Thread 1 sleeping\n")
       sleep(1)
 
-    #  log("Resuming Thread 1\n")
+    # log("Resuming Thread 1\n")
 
     #the following writeat offset and data is within filesize limit, so security layer should not block it
-    myfile1.writeat("est",5)
+    myfile1.writeat("TestTestTest",0)
     data = myfile1.readat(None,0)
-    if data == "TestTe":
+    if data == "TestTest":
       pass
     else:
+      # file size compromized
       raise Exception
 
     #Close the file
     myfile1.close()
     mycontext['TestingIsDone'] = True
 
-  except ValueError as e:
+  except Exception as e:
     log("===>Test Case: " + str(testid) + " Failed\n")
-    log("Error: Unknown Exception: " + str(e) + "\n")
+    # log("Error: Unknown Exception: " + str(e) + "\n")
     exitall()
 
 def threadTwo():
@@ -57,17 +59,18 @@ def threadTwo():
     myfile2=openfile(testfilename2,True)  #Open a file
     
     while mycontext['threadOneIsDone'] == False:
-      #  log("Thread 2 sleeping\n")
+      # log("Thread 2 sleeping\n")
       sleep(1)
 
-    #  log("Starting thread 2\n")
-    myfile2.setmaxfilesize(10)
+    # log("Starting thread 2\n")
+    myfile2.setmaxfilesize(12)
+    myfile2.writeat("TestTestTest",0)
     myfile2.close()
     mycontext['threadTwoIsDone'] = True
 
-  except ValueError as e:
+  except Exception as e:
     log("===>Test Case: " + str(testid) + " Failed\n")
-    log("Error: Unknown Exception: " + str(e) + "\n")
+    # log("Error: Unknown Exception: " + str(e) + "\n")
     exitall()
     #Close the file
 
@@ -75,7 +78,7 @@ createthread(threadOne)
 createthread(threadTwo)
 
 while mycontext['TestingIsDone'] == False:
-  #  log("Waiting...\n")
-  sleep(10)
+  # log("Waiting...\n")
+  sleep(1)
 
-log("===>Test Case - " + str(testid) + " Passed\n")
+# log("===>Test Case - " + str(testid) + " Passed\n")
