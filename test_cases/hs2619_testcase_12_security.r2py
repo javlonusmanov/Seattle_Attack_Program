@@ -1,9 +1,9 @@
-# Test Case 11: Threads
+# Test Case 12: Security Test: using two Threads to open two different files, set max file size limit for one file and check if it changed file size limit for other file. If it did, it's a security failure.
 # Author: Harshit Sanghvi
 
-testid = 11
-testfilename = "testfile_"+ str(testid) + ".txt"
-
+testid = 12
+testfilename1 = "testfile_"+ str(testid) + "_1.txt"
+testfilename2 = "testfile_"+ str(testid) + "_2.txt"
 # # log("\n=======>Test Case " + str(testid) + "<=======\n");
 
 mycontext['threadOneIsDone'] = False
@@ -12,12 +12,22 @@ mycontext['TestingIsDone'] = False
 
 def threadOne():
   try:
+    if testfilename1 in listfiles():
+      removefile(testfilename1)
+    myfile1=openfile(testfilename1,True)  #Open a file
     #write something
-    myfile.writeat("TestTest",0)
+    myfile1.writeat("Test",0)
 
-    myfile.setmaxfilesize(10)
+    myfile1.setmaxfilesize(8)
+    
+    # data = myfile1.readat(None,0)
+    # if data == "TestTe":
+    #   pass
+    # else:
+    #   raise Exception
     
     mycontext['threadOneIsDone'] = True
+
     while mycontext['threadTwoIsDone'] == False:
       # log("Thread 1 sleeping\n")
       sleep(1)
@@ -25,15 +35,16 @@ def threadOne():
     # log("Resuming Thread 1\n")
 
     #the following writeat offset and data is within filesize limit, so security layer should not block it
-    myfile.writeat("xy",0)
-    data = myfile.readat(None,0)
-    if data == "xysxy":
+    myfile1.writeat("TestTestTest",0)
+    data = myfile1.readat(None,0)
+    if data == "TestTest":
       pass
     else:
+      # file size compromized
       raise Exception
 
     #Close the file
-    myfile.close()
+    myfile1.close()
     mycontext['TestingIsDone'] = True
 
   except Exception as e:
@@ -43,38 +54,31 @@ def threadOne():
 
 def threadTwo():
   try:
+    if testfilename2 in listfiles():
+      removefile(testfilename2)
+    myfile2=openfile(testfilename2,True)  #Open a file
+    
     while mycontext['threadOneIsDone'] == False:
       # log("Thread 2 sleeping\n")
       sleep(1)
 
     # log("Starting thread 2\n")
-    myfile.setmaxfilesize(5)
-    # log("File size set to 5\n")  
-    #the following writeat offset and data is within filesize limit, so security layer should not block it
-    myfile.writeat("xy",3)
-    data = myfile.readat(None,0)
-    if data == "Tesxy":
-      pass
-    else:
-      raise Exception
+    myfile2.setmaxfilesize(12)
+    myfile2.writeat("TestTestTest",0)
+    myfile2.close()
     mycontext['threadTwoIsDone'] = True
 
   except Exception as e:
     log("===>Test Case: " + str(testid) + " Failed\n")
     # log("Error: Unknown Exception: " + str(e) + "\n")
     exitall()
-
-
-if testfilename in listfiles():
-  removefile(testfilename)
-myfile=openfile(testfilename,True)  #Open a file
-
+    #Close the file
 
 createthread(threadOne)
 createthread(threadTwo)
 
 while mycontext['TestingIsDone'] == False:
   # log("Waiting...\n")
-  sleep(10)
+  sleep(1)
 
 # log("===>Test Case - " + str(testid) + " Passed\n")

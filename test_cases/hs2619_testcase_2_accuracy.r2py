@@ -1,7 +1,7 @@
-# Test Case 3: Checks if file is truncated if required on setmaxfilesize
+# Test Case 2: Accuracy Test: Checks if writing beyond EOF throws exception.
 # Author: Harshit Sanghvi
 
-testid = 3
+testid = 2
 testfilename = "testfile_"+ str(testid) + ".txt"
 
 # log("\n=======>Test Case " + str(testid) + "<=======\n");
@@ -11,17 +11,18 @@ try:
     removefile(testfilename)
   myfile=openfile(testfilename,True)  #Open a file
 
-  # put some initial data in the file.
-  myfile.writeat("abcdefghijklmnopqrstuv",0)
-
-  #set maximum file size allowed to 10
-  myfile.setmaxfilesize(10)
-
-  data = myfile.readat(None,0)
-  if data == "abcdefghij":
+  #write something. current max file size is none, but current file size is 0, so offset > 0 should fail
+  try:
+    myfile.writeat("TestCode",1)
+  except SeekPastEndOfFileError:
+    # log("Offset can't be > EOF\n")
+    pass
+  except RepyArgumentError:
+    # log("Offset can't be > EOF\n")
     pass
   else:
-    log("Error: file not truncated\n")
+    #user is allowed to write only if its at valid place
+    # log("Error: offset can't be > EOF\n")
     raise Exception
 
   #Close the file

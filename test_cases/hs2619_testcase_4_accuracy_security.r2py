@@ -1,7 +1,7 @@
-# Test Case 6: Checks if negative max file size limit throws a valid exception.
+# Test Case 4: Accuracy and Security Test: Checks if writing above max file size truncates new data
 # Author: Harshit Sanghvi
 
-testid = 6
+testid = 4
 testfilename = "testfile_"+ str(testid) + ".txt"
 
 # log("\n=======>Test Case " + str(testid) + "<=======\n");
@@ -11,14 +11,21 @@ try:
     removefile(testfilename)
   myfile=openfile(testfilename,True)  #Open a file
 
-  try:
-    myfile.setmaxfilesize(-1);
-  except RepyArgumentError:
-    # log("Arguement Offset can't be -1\n")
-    pass
-  except ValueError:
+  # put some initial data of size 12 in the file.
+  myfile.writeat("abcdefghijkl",0)
+
+  #set maximum file size allowed to 15
+  myfile.setmaxfilesize(15)
+
+  myfile.writeat("uvwxyz", 11)
+  
+  data = myfile.readat(None,0)
+
+  if data == 'abcdefghijkuvwx':
+    #security layer properly truncated extra characters
     pass
   else:
+    # log("Error: File size compromised\n")
     raise Exception
 
   #Close the file

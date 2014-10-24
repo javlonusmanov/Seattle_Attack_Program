@@ -1,7 +1,7 @@
-# Test Case 1.1: A very basic test case. tries to write data where offset is before EOF, new data is within file size limit, but beyond current file size.
+# Test Case 1: Accuracy Test: very basic test case - tries to write data where offset is before EOF, new data is within file size limit, but beyond current file size.
 # Author: Harshit Sanghvi
 
-testid = 0
+testid = 1
 testfilename = "testfile_"+ str(testid) + ".txt"
 
 # log("\n=======>Test Case " + str(testid) + "<=======\n");
