@@ -8,18 +8,18 @@ for referencemonitor in reference_monitor_*;
 		for testcase in hs2619_*;
 			do
 				cd ..
-				if ls test_directory/reference_monitor_* &> /dev/null;
+				if ls repy/reference_monitor_* &> /dev/null;
 				then
-					rm test_directory/reference_monitor_*;
+					rm repy/reference_monitor_*;
 				fi
-				if ls test_directory/hs2619_* &> /dev/null;
+				if ls repy/hs2619_* &> /dev/null;
 				then
-					rm test_directory/hs2619_*; 
+					rm repy/hs2619_*; 
 				fi
 				echo "Testing: $referencemonitor with $testcase";
-				cp reference_monitors/$referencemonitor test_directory/;
-				cp test_cases/$testcase test_directory/;
-				cd test_directory;
+				cp reference_monitors/$referencemonitor repy/;
+				cp test_cases/$testcase repy/;
+				cd repy;
 				python repy.py restrictions.default encasementlib.r2py $referencemonitor $testcase; 
 			done;
 		echo "";
