@@ -25,4 +25,3 @@ for referencemonitor in extra_credit_*;
 		# echo "";
 		# read;
 	done;
-exit 0
