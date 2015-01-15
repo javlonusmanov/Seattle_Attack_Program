@@ -24,4 +24,4 @@ for referencemonitor in reference_monitor_*;
 			done;
 		echo "";
 	done;
-
+exit 0
